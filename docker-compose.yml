@@ -1,0 +1,71 @@
+services:
+
+    php:
+        build:
+            context: .
+            target: php
+        image: lumisocial
+        container_name: lumisocial
+        restart: unless-stopped
+        volumes:
+            -   ./:/var/www/lumisocial
+            - ./docker/php.ini:/usr/local/etc/php/conf.d/local.ini
+        ports:
+            -   "6000:9000"
+        environment:
+            CONTAINER_ROLE: app
+        networks:
+            - local
+        depends_on:
+            -   mysql
+
+    composer:
+        build:
+            context: ./docker
+            dockerfile: composer.Dockerfile
+        container_name: composer
+        working_dir: /var/www/lumisocial
+        entrypoint: [ "composer" ]
+        volumes:
+            -   ./:/var/www/lumisocial
+        networks:
+            - local
+
+    artisan:
+        image: lumisocial
+        container_name: artisan
+        working_dir: /var/www/lumisocial
+        entrypoint: [ "php", "/var/www/lumisocial/artisan" ]
+        volumes:
+            -   ./:/var/www/lumisocial
+        networks:
+            - local
+
+    mysql:
+        image: mysql:8.0
+        container_name: lumisocial_db
+        restart: unless-stopped
+        environment:
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_DATABASE: lumi_db
+            MYSQL_USER: lumi_user
+            MYSQL_PASSWORD: password1
+        ports:
+            -   "3306:3306"
+        volumes:
+            -   db-data:/var/lib/mysql
+        networks:
+            - local
+        healthcheck:
+            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+            interval: 10s
+            retries: 5
+            start_period: 30s
+            timeout: 5s
+
+volumes:
+    db-data: ~
+
+networks:
+    local:
+        driver: bridge
